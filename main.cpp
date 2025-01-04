@@ -4,7 +4,7 @@
 #include <random>
 
 
-void multiply_v0(const float* __restrict__ a, const float* __restrict__ bT, float* __restrict__ c, int M, int K, int N) {
+void multiply_v0_bT(const float* __restrict__ a, const float* __restrict__ bT, float* __restrict__ c, int M, int K, int N) {
     for (int m = 0; m < M; m++) {
         for (int n = 0; n < N; n++) {
             c[m * N + n] = 0.0;
@@ -19,7 +19,22 @@ void multiply_v0(const float* __restrict__ a, const float* __restrict__ bT, floa
     };
 }
 
-void multiply_v1(const float* __restrict__ a, const float* __restrict__ bT, float* __restrict__ c, int M, int K, int N) {
+void multiply_v0_aT(const float* __restrict__ aT, const float* __restrict__ b, float* __restrict__ c, int M, int K, int N) {
+    for (int m = 0; m < M; m++) {
+        for (int n = 0; n < N; n++) {
+            c[m * N + n] = 0.0;
+            for (int k = 0; k < K; k++) {
+                // c[m, n] += a[m, k] * bT[n, k]
+                // c[m, n] = c[m * N + n]
+                // a[m, k] = a[m * K + k]
+                // bT[n, k] = bT[n * K + k]
+                c[m * N + n] += aT[k * M + m] * b[k * N + n];
+            }
+        }
+    };
+}
+
+void multiply_v1_bT(const float* __restrict__ a, const float* __restrict__ bT, float* __restrict__ c, int M, int K, int N) {
     for (int m = 0; m < M; m++) {
         for (int n = 0; n < N; n++) {
             c[m * N + n] = 0.0;
@@ -29,6 +44,19 @@ void multiply_v1(const float* __restrict__ a, const float* __restrict__ bT, floa
                 for (int k2 = 0; k2 < 16; k2++) {
                     c[m * N + n] += pa[k2] * pb[k2];
                 }
+            }
+        }
+    };
+}
+
+void multiply_v1_aT(const float* __restrict__ aT, const float* __restrict__ b, float* __restrict__ c, int M, int K, int N) {
+    for (int m = 0; m < M; m++) {
+        for (int n = 0; n < N; n++) {
+            c[m * N + n] = 0.0;
+            for (int k = 0; k < K; k ++) {
+                const float* pa = &aT[k * M + m];
+                const float* pb = &b[k * N + n];
+                c[m * N + n] += pa[k] * pb[k];
             }
         }
     };
@@ -58,17 +86,49 @@ void print_mat(const float* c, int M, int N) {
         }
         std::cout << std::endl;
     }
+    std::cout << std::endl;
+}
+
+void transpose_matr(const float* __restrict__ p, float* __restrict__ pT, int M, int K) {
+    for (int i = 0; i < M; i++) {
+        for (int j = 0; j < K; j++) {
+            pT[j * M + i] = p[i * K + j];
+        }
+    }
 }
 
 void tiny_test() {
     int M = 3, K = 2, N = 4;
+
     std::vector<float> va = { 1, 2, 3, 4, 5, 6 };           // M * K
+    float *a;
+    a = va.data();
+    print_mat(a, M, K);
+
+    std::vector<float> vaT(K * M);
+    float *aT;
+    aT = vaT.data();
+    transpose_matr(a, aT, M, K);
+    print_mat(aT, K, M);
+
     std::vector<float> vbT = { 6, 5, 4, 3, 2, 1, 1, 2 };    // N * K
-    std::vector<float> vc(M * N);
+    float *bT;
+    bT = vbT.data();
+    print_mat(bT, N, K);
 
-    multiply_v0(va.data(), vbT.data(), vc.data(), M, K, N);
+    std::vector<float> vb(K * N);
+    float *b;
+    b = vb.data();
+    transpose_matr(bT, b, N, K);
+    print_mat(b, K, N);
 
-    print_mat(vc.data(), M, N);
+    std::vector<float> vc_bT(M * N);
+    multiply_v0_bT(a, bT, vc_bT.data(), M, K, N);
+    print_mat(vc_bT.data(), M, N);
+
+    std::vector<float> vc_aT(M * N);
+    multiply_v0_aT(aT, b, vc_aT.data(), M, K, N);
+    print_mat(vc_aT.data(), M, N);
 }
 
 int main() {
@@ -118,7 +178,7 @@ int main() {
 
 
     std::chrono::time_point time_1 = std::chrono::system_clock::now();
-    multiply_v0(a, bT, c, M, K, N);
+    multiply_v0_bT(a, bT, c, M, K, N);
     std::chrono::time_point time_2 = std::chrono::system_clock::now();
 
     auto nanosec = std::chrono::duration_cast<std::chrono::nanoseconds>(time_2 - time_1).count();
@@ -132,7 +192,7 @@ int main() {
     c1 = vc1.data();
 
     std::chrono::time_point time_3 = std::chrono::system_clock::now();
-    multiply_v1(a, bT, c1, M, K, N);
+    multiply_v1_bT(a, bT, c1, M, K, N);
     std::chrono::time_point time_4 = std::chrono::system_clock::now();
 
     if (!std::equal(vc.begin(), vc.end(), vc1.begin(), vc1.end(), epsilon_equal)) {
@@ -150,6 +210,6 @@ int main() {
 //    16 10 4 5
 //    38 24 10 11
 //    60 38 16 17
-//    Matrix multiplication naive: 433.737 ms
-//    Matrix multiplication version 1: 410.85 ms
+//    Matrix multiplication naive: 574.975 ms
+//    Matrix multiplication version 1: 546.557 ms
 }
