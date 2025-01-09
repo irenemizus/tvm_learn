@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <random>
+#include <cassert>
 
 
 void multiply_v0_bT(const float* __restrict__ a, const float* __restrict__ bT, float* __restrict__ c, int M, int K, int N) {
@@ -24,51 +25,41 @@ void multiply_v0_aT(const float* __restrict__ aT, const float* __restrict__ b, f
         for (int n = 0; n < N; n++) {
             c[m * N + n] = 0.0;
             for (int k = 0; k < K; k++) {
-                // c[m, n] += a[m, k] * bT[n, k]
+                // c[m, n] += aT[k, m] * b[k, n]
                 // c[m, n] = c[m * N + n]
-                // a[m, k] = a[m * K + k]
-                // bT[n, k] = bT[n * K + k]
+                // aT[k, m] = aT[k * M + m]
+                // b[k, n] = b[k * N + n]
                 c[m * N + n] += aT[k * M + m] * b[k * N + n];
             }
         }
     };
 }
 
-void multiply_v1_bT(const float* __restrict__ a, const float* __restrict__ bT, float* __restrict__ c, int M, int K, int N) {
-    for (int m = 0; m < M; m++) {
-        for (int n = 0; n < N; n++) {
-            c[m * N + n] = 0.0;
-            for (int k1 = 0; k1 < K; k1 += 16) {
-                const float* pa = &a[m * K + k1];
-                const float* pb = &bT[n * K + k1];
-                for (int k2 = 0; k2 < 16; k2++) {
-                    c[m * N + n] += pa[k2] * pb[k2];
-                }
-            }
-        }
-    };
-}
+//void multiply_v1_bT(const float* __restrict__ a, const float* __restrict__ bT, float* __restrict__ c, int M, int K, int N) {
+//    assert(N % 16 == 0);
+//    for (int m = 0; m < M; m++) {
+//        for (int n1 = 0; n1 < N; n1 += 16) {
+//            for (int k = 0; k < K; k++) {
+//                const float* pa = &a[m * K + k];
+//                for (int n2 = 0; n2 < 16; n2++) {
+//                    c[m * N + n1 + n2] = 0.0;
+//                    const float* pb = &bT[(n1 + n2) * K + k];
+//                    c[m * N + n1 + n2] += pa[k] * pb[k];
+//                }
+//            }
+//        }
+//    };
+//}
 
 void multiply_v1_aT(const float* __restrict__ aT, const float* __restrict__ b, float* __restrict__ c, int M, int K, int N) {
-    for (int m = 0; m < M; m++) {
-        for (int n = 0; n < N; n++) {
-            c[m * N + n] = 0.0;
-            for (int k = 0; k < K; k ++) {
-                const float* pa = &aT[k * M + m];
-                const float* pb = &b[k * N + n];
-                c[m * N + n] += pa[k] * pb[k];
-            }
-        }
-    };
-}
+    assert(N % 16 == 0);
+    for (int i = 0; i < M * N; i++) { c[i] = 0.0; }
 
-void multiply_v11(const float* __restrict__ a, const float* __restrict__ bT, float* __restrict__ c, int M, int K, int N) {
     for (int m = 0; m < M; m++) {
-        for (int n = 0; n < N; n++) {
-            c[m * N + n] = 0.0;
-            for (int k1 = 0; k1 < K; k1 += 16) {
-                for (int k2 = 0; k2 < 16; k2++) {
-                    c[m * N + n] += a[m * K + k1 + k2] * bT[n * K + k1 + k2];
+        for (int n1 = 0; n1 < N; n1 += 16) {
+                for (int k = 0; k < K; k++) {
+                    for (int n2 = 0; n2 < 16; n2++) {
+                        c[m * N + n1 + n2] += aT[k * M + m] * b[k * N + n1 + n2];
                 }
             }
         }
@@ -98,7 +89,7 @@ void transpose_matr(const float* __restrict__ p, float* __restrict__ pT, int M, 
 }
 
 void tiny_test() {
-    int M = 3, K = 2, N = 4;
+    int M = 3, K = 2, N = 16;
 
     std::vector<float> va = { 1, 2, 3, 4, 5, 6 };           // M * K
     float *a;
@@ -111,7 +102,7 @@ void tiny_test() {
     transpose_matr(a, aT, M, K);
     print_mat(aT, K, M);
 
-    std::vector<float> vbT = { 6, 5, 4, 3, 2, 1, 1, 2 };    // N * K
+    std::vector<float> vbT = { 6, 5, 4, 3, 2, 1, 1, 2, 6, 5, 4, 3, 2, 1, 1, 2, 6, 5, 4, 3, 2, 1, 1, 2, 6, 5, 4, 3, 2, 1, 1, 2};    // N * K
     float *bT;
     bT = vbT.data();
     print_mat(bT, N, K);
@@ -129,6 +120,14 @@ void tiny_test() {
     std::vector<float> vc_aT(M * N);
     multiply_v0_aT(aT, b, vc_aT.data(), M, K, N);
     print_mat(vc_aT.data(), M, N);
+
+//    std::vector<float> v1c_bT(M * N);
+//    multiply_v1_bT(a, bT, v1c_bT.data(), M, K, N);
+//    print_mat(v1c_bT.data(), M, N);
+
+    std::vector<float> v1c_aT(M * N);
+    multiply_v1_aT(aT, b, v1c_aT.data(), M, K, N);
+    print_mat(v1c_aT.data(), M, N);
 }
 
 int main() {
@@ -158,6 +157,16 @@ int main() {
         f = dist(e2);
     }
     bT = vbT.data();
+
+    std::vector<float> vaT(K * M);
+    float *aT;
+    aT = vaT.data();
+    transpose_matr(a, aT, M, K);
+
+    std::vector<float> vb(K * N);
+    float *b;
+    b = vb.data();
+    transpose_matr(bT, b, N, K);
 
     float *c;
     std::vector<float> vc(M * N);
@@ -192,7 +201,8 @@ int main() {
     c1 = vc1.data();
 
     std::chrono::time_point time_3 = std::chrono::system_clock::now();
-    multiply_v1_bT(a, bT, c1, M, K, N);
+    //multiply_v1_bT(a, bT, c1, M, K, N);
+    multiply_v1_aT(aT, b, c1, M, K, N);
     std::chrono::time_point time_4 = std::chrono::system_clock::now();
 
     if (!std::equal(vc.begin(), vc.end(), vc1.begin(), vc1.end(), epsilon_equal)) {
@@ -202,7 +212,7 @@ int main() {
     auto nanosec1 = std::chrono::duration_cast<std::chrono::nanoseconds>(time_4 - time_3).count();
     std::cout << "Matrix multiplication version 1: " << nanosec1 * 1e-6 << " ms" << std::endl;
 
-    return 0;
+      return 0;
 
 //    Intel(R) Xeon(R) Gold 6230R CPU @ 2.10GHz
 //
