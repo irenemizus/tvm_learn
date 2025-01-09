@@ -6,6 +6,7 @@
 
 
 void multiply_v0_bT(const float* __restrict__ a, const float* __restrict__ bT, float* __restrict__ c, int M, int K, int N) {
+    // c = a * bT
     for (int m = 0; m < M; m++) {
         for (int n = 0; n < N; n++) {
             c[m * N + n] = 0.0;
@@ -21,6 +22,7 @@ void multiply_v0_bT(const float* __restrict__ a, const float* __restrict__ bT, f
 }
 
 void multiply_v0_aT(const float* __restrict__ aT, const float* __restrict__ b, float* __restrict__ c, int M, int K, int N) {
+    // c = aT * b
     for (int m = 0; m < M; m++) {
         for (int n = 0; n < N; n++) {
             c[m * N + n] = 0.0;
@@ -35,23 +37,8 @@ void multiply_v0_aT(const float* __restrict__ aT, const float* __restrict__ b, f
     };
 }
 
-//void multiply_v1_bT(const float* __restrict__ a, const float* __restrict__ bT, float* __restrict__ c, int M, int K, int N) {
-//    assert(N % 16 == 0);
-//    for (int m = 0; m < M; m++) {
-//        for (int n1 = 0; n1 < N; n1 += 16) {
-//            for (int k = 0; k < K; k++) {
-//                const float* pa = &a[m * K + k];
-//                for (int n2 = 0; n2 < 16; n2++) {
-//                    c[m * N + n1 + n2] = 0.0;
-//                    const float* pb = &bT[(n1 + n2) * K + k];
-//                    c[m * N + n1 + n2] += pa[k] * pb[k];
-//                }
-//            }
-//        }
-//    };
-//}
-
 void multiply_v1_aT(const float* __restrict__ aT, const float* __restrict__ b, float* __restrict__ c, int M, int K, int N) {
+    // c = aT * b, the accelerated variant
     assert(N % 16 == 0);
     for (int i = 0; i < M * N; i++) { c[i] = 0.0; }
 
@@ -67,10 +54,12 @@ void multiply_v1_aT(const float* __restrict__ aT, const float* __restrict__ b, f
 }
 
 bool epsilon_equal(float a, float b) {
+    // Equality with the given accuracy
     return std::abs(a - b) < 1e-4;
 }
 
 void print_mat(const float* c, int M, int N) {
+    // A function for pretty printing of a matrix
     for (int i = 0; i < M; i++) {
         for (int j = 0; j < N; j++) {
             std::cout << c[i * N + j] << " ";
@@ -81,6 +70,7 @@ void print_mat(const float* c, int M, int N) {
 }
 
 void transpose_matr(const float* __restrict__ p, float* __restrict__ pT, int M, int K) {
+    // A function that transposes a matrix
     for (int i = 0; i < M; i++) {
         for (int j = 0; j < K; j++) {
             pT[j * M + i] = p[i * K + j];
@@ -89,53 +79,58 @@ void transpose_matr(const float* __restrict__ p, float* __restrict__ pT, int M, 
 }
 
 void tiny_test() {
+    // A test function for the abovementioned functions on a case of small matrices
     int M = 3, K = 2, N = 16;
 
-    std::vector<float> va = { 1, 2, 3, 4, 5, 6 };           // M * K
+    // Matrix a ~ M x K
+    std::vector<float> va = { 1, 2, 3, 4, 5, 6 };
     float *a;
     a = va.data();
     print_mat(a, M, K);
 
+    // Matrix aT ~ K x M
     std::vector<float> vaT(K * M);
     float *aT;
     aT = vaT.data();
     transpose_matr(a, aT, M, K);
     print_mat(aT, K, M);
 
-    std::vector<float> vbT = { 6, 5, 4, 3, 2, 1, 1, 2, 6, 5, 4, 3, 2, 1, 1, 2, 6, 5, 4, 3, 2, 1, 1, 2, 6, 5, 4, 3, 2, 1, 1, 2};    // N * K
+    // Matrix bT ~ N x K
+    std::vector<float> vbT = { 6, 5, 4, 3, 2, 1, 1, 2, 6, 5, 4, 3, 2, 1, 1, 2, 6, 5, 4, 3, 2, 1, 1, 2, 6, 5, 4, 3, 2, 1, 1, 2};
     float *bT;
     bT = vbT.data();
     print_mat(bT, N, K);
 
+    // Matrix b ~ K x N
     std::vector<float> vb(K * N);
     float *b;
     b = vb.data();
     transpose_matr(bT, b, N, K);
     print_mat(b, K, N);
 
+    // Output matrix c_bT = a * bT ~ M x N
     std::vector<float> vc_bT(M * N);
     multiply_v0_bT(a, bT, vc_bT.data(), M, K, N);
     print_mat(vc_bT.data(), M, N);
 
+    // Output matrix c_aT = aT * b ~ M x N
     std::vector<float> vc_aT(M * N);
     multiply_v0_aT(aT, b, vc_aT.data(), M, K, N);
     print_mat(vc_aT.data(), M, N);
 
-//    std::vector<float> v1c_bT(M * N);
-//    multiply_v1_bT(a, bT, v1c_bT.data(), M, K, N);
-//    print_mat(v1c_bT.data(), M, N);
-
-    std::vector<float> v1c_aT(M * N);
-    multiply_v1_aT(aT, b, v1c_aT.data(), M, K, N);
-    print_mat(v1c_aT.data(), M, N);
+    // Output matrix c1_aT = aT * b ~ M x N (obtained using the accelerated variant)
+    std::vector<float> vc1_aT(M * N);
+    multiply_v1_aT(aT, b, vc1_aT.data(), M, K, N);
+    print_mat(vc1_aT.data(), M, N);
 }
 
 int main() {
 #ifdef __AVX512F__
     std::cout << "AVX-512 is defined" << std::endl;
 #endif
-    tiny_test();
+    //tiny_test();
 
+    // Initializing of the uniform real distribution for random values
     std::random_device rd;
     std::mt19937 e2(rd());
     std::uniform_real_distribution<> dist(0.0, 1.0);
@@ -144,6 +139,7 @@ int main() {
     int K = 1024;
     int N = 128;
 
+    // Matrix a ~ M x K of random real values
     float *a;
     std::vector<float> va(M * K);
     for (float& f : va) {
@@ -151,6 +147,7 @@ int main() {
     }
     a = va.data();
 
+    // Matrix bT ~ N x K of random real values
     float *bT;
     std::vector<float> vbT(N * K);
     for (float& f : vbT) {
@@ -158,68 +155,82 @@ int main() {
     }
     bT = vbT.data();
 
+    // Matrix aT ~ K x M
     std::vector<float> vaT(K * M);
     float *aT;
     aT = vaT.data();
     transpose_matr(a, aT, M, K);
 
+    // Matrix b ~ K x N
     std::vector<float> vb(K * N);
     float *b;
     b = vb.data();
     transpose_matr(bT, b, N, K);
 
+    // Matrix c ~ M x N
     float *c;
     std::vector<float> vc(M * N);
     c = vc.data();
 
-//    Trying to do alignment...
-//
-//    float* a = (float*)aligned_alloc(64, M * K * sizeof(float));
-//    for (int i = 0; i < M * K; i++) {
-//        a[i] = dist(e2);
-//    }
-//    float* bT = (float*)aligned_alloc(64, N * K * sizeof(float));
-//    for (int i = 0; i < N * K; i++) {
-//        bT[i] = dist(e2);
-//    }
-//    float* c = (float*)aligned_alloc(64, M * N * sizeof(float));
-//    float* c1 = (float*)aligned_alloc(64, M * N * sizeof(float));
-
-
     std::chrono::time_point time_1 = std::chrono::system_clock::now();
+    // Calculating c = a * bT
     multiply_v0_bT(a, bT, c, M, K, N);
     std::chrono::time_point time_2 = std::chrono::system_clock::now();
 
+    // Calculation time
     auto nanosec = std::chrono::duration_cast<std::chrono::nanoseconds>(time_2 - time_1).count();
 
+    // Printing output results
     //std::cout << "Matrix multiplication result: " << std::endl;
     //print_mat(c, M, N);
-    std::cout << "Matrix multiplication naive: " << nanosec * 1e-6 << " ms" << std::endl;
+    std::cout << "Matrix multiplication naive (c = a * bT): " << nanosec * 1e-6 << " ms" << std::endl;
 
+
+    // Matrix c0 ~ M x N
+    float *c0;
+    std::vector<float> vc0(M * N);
+    c0 = vc0.data();
+
+    std::chrono::time_point time_10 = std::chrono::system_clock::now();
+    // Calculating c0 = aT * b
+    multiply_v0_aT(aT, b, c0, M, K, N);
+    std::chrono::time_point time_20 = std::chrono::system_clock::now();
+
+    // Checking if the functions 'multiply_v0_bT' and 'multiply_v0_aT' result in the same output matrices
+    if (!std::equal(vc.begin(), vc.end(), vc0.begin(), vc0.end(), epsilon_equal)) {
+        throw std::runtime_error("vc0 != vc");
+    }
+
+    // Calculation time
+    auto nanosec0 = std::chrono::duration_cast<std::chrono::nanoseconds>(time_20 - time_10).count();
+    // Printing output results
+    std::cout << "Matrix multiplication naive (c = aT * b): " << nanosec0 * 1e-6 << " ms" << std::endl;
+
+
+    // Matrix c1 ~ M x N
     float *c1;
     std::vector<float> vc1(M * N);
     c1 = vc1.data();
 
     std::chrono::time_point time_3 = std::chrono::system_clock::now();
-    //multiply_v1_bT(a, bT, c1, M, K, N);
+    // Calculating c1 = aT * b (accelerated variant)
     multiply_v1_aT(aT, b, c1, M, K, N);
     std::chrono::time_point time_4 = std::chrono::system_clock::now();
 
+    // Checking if the functions 'multiply_v0_bT' and 'multiply_v1_aT' result in the same output matrices
     if (!std::equal(vc.begin(), vc.end(), vc1.begin(), vc1.end(), epsilon_equal)) {
         throw std::runtime_error("vc1 != vc");
     }
 
+    // Calculation time
     auto nanosec1 = std::chrono::duration_cast<std::chrono::nanoseconds>(time_4 - time_3).count();
+    // Printing output results
     std::cout << "Matrix multiplication version 1: " << nanosec1 * 1e-6 << " ms" << std::endl;
 
       return 0;
 
-//    Intel(R) Xeon(R) Gold 6230R CPU @ 2.10GHz
-//
 //    AVX-512 is defined
-//    16 10 4 5
-//    38 24 10 11
-//    60 38 16 17
-//    Matrix multiplication naive: 574.975 ms
-//    Matrix multiplication version 1: 546.557 ms
+//    Matrix multiplication naive (c = a * bT): 562.949 ms
+//    Matrix multiplication naive (c = aT * b): 3259.11 ms
+//    Matrix multiplication version 1: 170.269 ms
 }
