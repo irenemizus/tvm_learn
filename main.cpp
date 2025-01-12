@@ -68,6 +68,24 @@ void multiply_v2_aT(const float* __restrict__ aT, const float* __restrict__ b, f
     };
 }
 
+void multiply_v3_aT(const float* __restrict__ aT, const float* __restrict__ b, float* __restrict__ c, int M, int K, int N) {
+    // c = aT * b, the double-loop acceleration trial
+    assert(N % 16 == 0);
+    for (int i = 0; i < M * N; i++) { c[i] = 0.0; }
+
+    for (int m1 = 0; m1 < M; m1 += 16) {
+        for (int n1 = 0; n1 < N; n1 += 16) {
+            for (int k = 0; k < K; k++) {
+                for (int m2 = 0; m2 < 16; m2++) {
+                    for (int n2 = 0; n2 < 16; n2++) {
+                        c[(m1 + m2) * N + n1 + n2] += aT[k * M + m1 + m2] * b[k * N + n1 + n2];
+                    }
+                }
+            }
+        }
+    };
+}
+
 bool epsilon_equal(float a, float b) {
     // Equality with the given accuracy
     return std::abs(a - b) < 1e-4;
@@ -182,6 +200,7 @@ int main() {
     b = vb.data();
     transpose_matr(bT, b, N, K);
 
+
     // Matrix c ~ M x N
     float *c;
     std::vector<float> vc(M * N);
@@ -221,6 +240,7 @@ int main() {
     // Printing output results
     std::cout << "Matrix multiplication naive (c = aT * b): " << nanosec0 * 1e-6 << " ms" << std::endl;
 
+
     // Matrix c1 ~ M x N
     float *c1;
     std::vector<float> vc1(M * N);
@@ -240,6 +260,7 @@ int main() {
     auto nanosec1 = std::chrono::duration_cast<std::chrono::nanoseconds>(time_21 - time_11).count();
     // Printing output results
     std::cout << "Matrix multiplication version 1: " << nanosec1 * 1e-6 << " ms" << std::endl;
+
 
     // Matrix c2 ~ M x N
     float *c2;
@@ -261,11 +282,33 @@ int main() {
     // Printing output results
     std::cout << "Matrix multiplication version 2: " << nanosec2 * 1e-6 << " ms" << std::endl;
 
-      return 0;
+
+    // Matrix c3 ~ M x N
+    float *c3;
+    std::vector<float> vc3(M * N);
+    c3 = vc3.data();
+
+    std::chrono::time_point time_13 = std::chrono::system_clock::now();
+    // Calculating c2 = aT * b (accelerated variant)
+    multiply_v3_aT(aT, b, c3, M, K, N);
+    std::chrono::time_point time_23 = std::chrono::system_clock::now();
+
+    // Checking if the functions 'multiply_v0_bT' and 'multiply_v2_aT' result in the same output matrices
+    if (!std::equal(vc.begin(), vc.end(), vc3.begin(), vc3.end(), epsilon_equal)) {
+        throw std::runtime_error("vc3 != vc");
+    }
+
+    // Calculation time
+    auto nanosec3 = std::chrono::duration_cast<std::chrono::nanoseconds>(time_23 - time_13).count();
+    // Printing output results
+    std::cout << "Matrix multiplication version 3: " << nanosec3 * 1e-6 << " ms" << std::endl;
+
+    return 0;
 
 //    AVX-512 is defined
-//    Matrix multiplication naive (c = a * bT): 561.524 ms
-//    Matrix multiplication naive (c = aT * b): 2402.16 ms
-//    Matrix multiplication version 1: 3173.22 ms
-//    Matrix multiplication version 2: 146.405 ms
+//    Matrix multiplication naive (c = a * bT): 571.141 ms
+//    Matrix multiplication naive (c = aT * b): 2549.7 ms
+//    Matrix multiplication version 1: 2368.79 ms
+//    Matrix multiplication version 2: 168.514 ms
+//    Matrix multiplication version 3: 67.2334 ms
 }
