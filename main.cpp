@@ -69,8 +69,9 @@ void multiply_v2_aT(const float* __restrict__ aT, const float* __restrict__ b, f
 }
 
 void multiply_v3_aT(const float* __restrict__ aT, const float* __restrict__ b, float* __restrict__ c, int M, int K, int N) {
-    // c = aT * b, the double-loop acceleration trial
+    // c = aT * b, the double-loop acceleration
     assert(N % 16 == 0);
+    assert(M % 16 == 0);
     for (int i = 0; i < M * N; i++) { c[i] = 0.0; }
 
     for (int m1 = 0; m1 < M; m1 += 16) {
