@@ -173,6 +173,8 @@ int main() {
     int K = 1024;
     int N = 128;
 
+    int Nexp = 20, Nexp0 = 20, Nexp1 = 20, Nexp2 = 20, Nexp3 = 20;
+
     // Matrix a ~ M x K of random real values
     float *a;
     std::vector<float> va(M * K);
@@ -207,13 +209,17 @@ int main() {
     std::vector<float> vc(M * N);
     c = vc.data();
 
-    std::chrono::time_point time_1 = std::chrono::system_clock::now();
-    // Calculating c = a * bT
-    multiply_v0_bT(a, bT, c, M, K, N);
-    std::chrono::time_point time_2 = std::chrono::system_clock::now();
+    auto time = 0.0;
+    for (int i = 0; i < Nexp; i++) {
+        std::chrono::time_point time_1 = std::chrono::system_clock::now();
+        // Calculating c = a * bT
+        multiply_v0_bT(a, bT, c, M, K, N);
+        std::chrono::time_point time_2 = std::chrono::system_clock::now();
+        // Calculation time
+        time += std::chrono::duration_cast<std::chrono::nanoseconds>(time_2 - time_1).count();
+    }
 
-    // Calculation time
-    auto nanosec = std::chrono::duration_cast<std::chrono::nanoseconds>(time_2 - time_1).count();
+    auto nanosec = time / Nexp;
 
     // Printing output results
     //std::cout << "Matrix multiplication result: " << std::endl;
@@ -226,18 +232,24 @@ int main() {
     std::vector<float> vc0(M * N);
     c0 = vc0.data();
 
-    std::chrono::time_point time_10 = std::chrono::system_clock::now();
-    // Calculating c0 = aT * b
-    multiply_v0_aT(aT, b, c0, M, K, N);
-    std::chrono::time_point time_20 = std::chrono::system_clock::now();
+    auto time0 = 0.0;
+    for (int i = 0; i < Nexp0; i++) {
+        std::chrono::time_point time_10 = std::chrono::system_clock::now();
+        // Calculating c0 = aT * b
+        multiply_v0_aT(aT, b, c0, M, K, N);
+        std::chrono::time_point time_20 = std::chrono::system_clock::now();
 
-    // Checking if the functions 'multiply_v0_bT' and 'multiply_v0_aT' result in the same output matrices
-    if (!std::equal(vc.begin(), vc.end(), vc0.begin(), vc0.end(), epsilon_equal)) {
-        throw std::runtime_error("vc0 != vc");
+        // Checking if the functions 'multiply_v0_bT' and 'multiply_v0_aT' result in the same output matrices
+        if (!std::equal(vc.begin(), vc.end(), vc0.begin(), vc0.end(), epsilon_equal)) {
+            throw std::runtime_error("vc0 != vc");
+        }
+
+        // Calculation time
+        time0 += std::chrono::duration_cast<std::chrono::nanoseconds>(time_20 - time_10).count();
     }
 
-    // Calculation time
-    auto nanosec0 = std::chrono::duration_cast<std::chrono::nanoseconds>(time_20 - time_10).count();
+    auto nanosec0 = time0 / Nexp0;
+
     // Printing output results
     std::cout << "Matrix multiplication naive (c = aT * b): " << nanosec0 * 1e-6 << " ms" << std::endl;
 
@@ -247,18 +259,24 @@ int main() {
     std::vector<float> vc1(M * N);
     c1 = vc1.data();
 
-    std::chrono::time_point time_11 = std::chrono::system_clock::now();
-    // Calculating c1 = aT * b (second variant)
-    multiply_v1_aT(aT, b, c1, M, K, N);
-    std::chrono::time_point time_21 = std::chrono::system_clock::now();
+    auto time1 = 0.0;
+    for (int i = 0; i < Nexp1; i++) {
+        std::chrono::time_point time_11 = std::chrono::system_clock::now();
+        // Calculating c1 = aT * b (second variant)
+        multiply_v1_aT(aT, b, c1, M, K, N);
+        std::chrono::time_point time_21 = std::chrono::system_clock::now();
 
-    // Checking if the functions 'multiply_v0_bT' and 'multiply_v1_aT' result in the same output matrices
-    if (!std::equal(vc.begin(), vc.end(), vc1.begin(), vc1.end(), epsilon_equal)) {
-        throw std::runtime_error("vc1 != vc");
+        // Checking if the functions 'multiply_v0_bT' and 'multiply_v1_aT' result in the same output matrices
+        if (!std::equal(vc.begin(), vc.end(), vc1.begin(), vc1.end(), epsilon_equal)) {
+            throw std::runtime_error("vc1 != vc");
+        }
+
+        // Calculation time
+        time1 += std::chrono::duration_cast<std::chrono::nanoseconds>(time_21 - time_11).count();
     }
 
-    // Calculation time
-    auto nanosec1 = std::chrono::duration_cast<std::chrono::nanoseconds>(time_21 - time_11).count();
+    auto nanosec1 = time1 / Nexp1;
+
     // Printing output results
     std::cout << "Matrix multiplication version 1: " << nanosec1 * 1e-6 << " ms" << std::endl;
 
@@ -268,18 +286,24 @@ int main() {
     std::vector<float> vc2(M * N);
     c2 = vc2.data();
 
-    std::chrono::time_point time_12 = std::chrono::system_clock::now();
-    // Calculating c2 = aT * b (accelerated variant)
-    multiply_v2_aT(aT, b, c2, M, K, N);
-    std::chrono::time_point time_22 = std::chrono::system_clock::now();
+    auto time2 = 0.0;
+    for (int i = 0; i < Nexp2; i++) {
+        std::chrono::time_point time_12 = std::chrono::system_clock::now();
+        // Calculating c2 = aT * b (accelerated variant)
+        multiply_v2_aT(aT, b, c2, M, K, N);
+        std::chrono::time_point time_22 = std::chrono::system_clock::now();
 
-    // Checking if the functions 'multiply_v0_bT' and 'multiply_v2_aT' result in the same output matrices
-    if (!std::equal(vc.begin(), vc.end(), vc2.begin(), vc2.end(), epsilon_equal)) {
-        throw std::runtime_error("vc2 != vc");
+        // Checking if the functions 'multiply_v0_bT' and 'multiply_v2_aT' result in the same output matrices
+        if (!std::equal(vc.begin(), vc.end(), vc2.begin(), vc2.end(), epsilon_equal)) {
+            throw std::runtime_error("vc2 != vc");
+        }
+
+        // Calculation time
+        time2 += std::chrono::duration_cast<std::chrono::nanoseconds>(time_22 - time_12).count();
     }
 
-    // Calculation time
-    auto nanosec2 = std::chrono::duration_cast<std::chrono::nanoseconds>(time_22 - time_12).count();
+    auto nanosec2 = time2 / Nexp2;
+
     // Printing output results
     std::cout << "Matrix multiplication version 2: " << nanosec2 * 1e-6 << " ms" << std::endl;
 
@@ -289,27 +313,33 @@ int main() {
     std::vector<float> vc3(M * N);
     c3 = vc3.data();
 
-    std::chrono::time_point time_13 = std::chrono::system_clock::now();
-    // Calculating c2 = aT * b (accelerated variant)
-    multiply_v3_aT(aT, b, c3, M, K, N);
-    std::chrono::time_point time_23 = std::chrono::system_clock::now();
+    auto time3 = 0.0;
+    for (int i = 0; i < Nexp3; i++) {
+        std::chrono::time_point time_13 = std::chrono::system_clock::now();
+        // Calculating c2 = aT * b (accelerated variant)
+        multiply_v3_aT(aT, b, c3, M, K, N);
+        std::chrono::time_point time_23 = std::chrono::system_clock::now();
 
-    // Checking if the functions 'multiply_v0_bT' and 'multiply_v2_aT' result in the same output matrices
-    if (!std::equal(vc.begin(), vc.end(), vc3.begin(), vc3.end(), epsilon_equal)) {
-        throw std::runtime_error("vc3 != vc");
+        // Checking if the functions 'multiply_v0_bT' and 'multiply_v2_aT' result in the same output matrices
+        if (!std::equal(vc.begin(), vc.end(), vc3.begin(), vc3.end(), epsilon_equal)) {
+            throw std::runtime_error("vc3 != vc");
+        }
+
+        // Calculation time
+        time3 += std::chrono::duration_cast<std::chrono::nanoseconds>(time_23 - time_13).count();
     }
 
-    // Calculation time
-    auto nanosec3 = std::chrono::duration_cast<std::chrono::nanoseconds>(time_23 - time_13).count();
+    auto nanosec3 = time3 / Nexp3;
+
     // Printing output results
     std::cout << "Matrix multiplication version 3: " << nanosec3 * 1e-6 << " ms" << std::endl;
 
     return 0;
 
 //    AVX-512 is defined
-//    Matrix multiplication naive (c = a * bT): 571.141 ms
-//    Matrix multiplication naive (c = aT * b): 2549.7 ms
-//    Matrix multiplication version 1: 2368.79 ms
-//    Matrix multiplication version 2: 168.514 ms
-//    Matrix multiplication version 3: 67.2334 ms
+//    Matrix multiplication naive (c = a * bT): 535.968 ms
+//    Matrix multiplication naive (c = aT * b): 401.203 ms
+//    Matrix multiplication version 1: 391.045 ms
+//    Matrix multiplication version 2: 156.705 ms
+//    Matrix multiplication version 3: 75.2622 ms
 }
