@@ -394,6 +394,13 @@ print(tvm.lower(s, [A, B, C], simple_mode=True))
 # tutorial by yourself to observe the performance gain achieved by TVM.
 
 ###################################################################################################
+
+
+
+
+
+
+###################################################################################################
 # Learning Tests
 # The size of the matrix
 # (K, M) x (K, N)
@@ -610,3 +617,16 @@ print("Opt_v2_3: %f" % opt_v2_3_time)
 print(tvm.lower(s, [AT, B, C_AT], simple_mode=True))
 
 ###################################################################################################
+
+# Exporting the latest version
+func.export_library("export.so")
+# objdump -d export.so > export_dump.asm
+
+
+# Results summary:
+# Numpy running time: 0.001233
+# Baseline_aT: 1.773733
+# Opt_v2: 0.138875
+# Opt_v2_1: 0.097085
+# Opt_v2_2: 0.065895
+# Opt_v2_3: 0.003320
