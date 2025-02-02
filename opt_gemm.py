@@ -495,6 +495,10 @@ print("Opt_v2: %f" % evaluator(aT, b, c_aT).mean)
 
 print(tvm.lower(s, [AT, B, C_AT], simple_mode=True))
 
+# Exporting the v2 version
+func.export_library("export.so")
+# objdump -d export.so > export_dump.asm
+
 ################################################################################################
 # Array Packing + Blocking (full)
 kfactor = 4
@@ -617,10 +621,6 @@ print("Opt_v2_3: %f" % opt_v2_3_time)
 print(tvm.lower(s, [AT, B, C_AT], simple_mode=True))
 
 ###################################################################################################
-
-# Exporting the latest version
-func.export_library("export.so")
-# objdump -d export.so > export_dump.asm
 
 
 # Results summary:
